@@ -1,0 +1,9 @@
+/* EcoRoute | Navigation item styling */
+.nv>span{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-size:16px;flex-shrink:0}
+.ic{font-size:17px}.bn button .bi{display:block;font-size:19px;line-height:1.25}
+.qa{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}.qa button{padding:14px 10px;border-radius:14px;background:var(--cd);border:1px solid var(--bd);display:grid;gap:7px;place-items:center;font-weight:700;color:var(--tx)}.qa .qi{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-size:22px}
+.mdl{position:fixed;inset:0;background:#0009;display:grid;place-items:center;z-index:20;padding:16px}.mdl .cd{width:min(100%,480px);max-height:90vh;overflow:auto}
+.wp{display:flex;gap:10px;align-items:center;padding:10px;border:1px solid var(--bd);border-radius:12px;margin:6px 0;background:var(--cd);cursor:grab}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.chips button{padding:6px 12px;border-radius:99px;background:var(--cd);border:1px solid var(--bd);color:var(--tx)}.chips .on{background:var(--g);color:#fff;border-color:var(--g)}
+.mk.ev{width:28px;height:28px;font-size:14px;display:grid;place-items:center}
+.top select{width:auto;padding:6px 12px;border-radius:99px;border:0;background:#fff;color:var(--g);font-weight:700}

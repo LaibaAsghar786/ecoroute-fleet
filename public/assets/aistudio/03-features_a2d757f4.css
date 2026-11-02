@@ -1,0 +1,16 @@
+/* EcoRoute | Network badge, toast, maps, floating mobile nav */
+.net{display:inline-flex;gap:5px;align-items:center;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}.net.on{background:#E1F5EA;color:#1E7B4A}.net.off{background:#FDE4E4;color:#B23232}
+.pt{position:fixed;top:16px;right:16px;max-width:380px;z-index:50;background:var(--cd);border:1px solid var(--bd);border-left:5px solid #1E9E5A;border-radius:12px;padding:14px 16px;box-shadow:0 12px 36px #0004;animation:pti .45s cubic-bezier(.2,.9,.3,1.2)}@keyframes pti{from{transform:translateX(120%);opacity:0}}
+.lv{display:grid;grid-template-columns:2fr 1fr;gap:14px}.mk2{width:30px;height:30px;border-radius:50%;border:3px solid #fff;display:grid;place-items:center;font-size:14px;box-shadow:0 2px 6px #0005}
+.fe{color:var(--rd);font-size:12px;margin-top:8px}
+.ph{position:relative}.ph .ls{display:none}.ph:has(.bn) .sc{padding-bottom:92px}
+.bn{position:absolute;left:12px;right:12px;bottom:12px;padding:6px;border:1px solid var(--bd);border-radius:22px;box-shadow:0 10px 30px #0003;z-index:5;overflow:hidden}
+.bn button{position:relative;z-index:1;border-radius:16px}.bn .bi{transition:transform .3s}.bn .on .bi{transform:translateY(-2px) scale(1.2)}
+.ind{position:absolute;top:6px;bottom:6px;left:6px;width:calc((100% - 12px)/5);border-radius:16px;background:var(--soft);transform:translateX(calc(var(--i,0)*100%));transition:transform .45s cubic-bezier(.34,1.56,.64,1),opacity .2s}.ind.none{opacity:0}
+#thm{padding:8px 14px}
+.mbn{display:none}
+.msh{position:fixed;inset:0;background:#0006;z-index:40;display:grid;align-items:end}.msi{background:var(--cd);border-radius:22px 22px 0 0;padding:14px 14px 90px;animation:msu .35s cubic-bezier(.2,.9,.3,1)}@keyframes msu{from{transform:translateY(100%)}}
+@media(min-width:821px){.msh{display:none}}
+@media(max-width:820px){.sb{display:none!important}.ct{padding-bottom:110px}.lv{grid-template-columns:1fr}
+.mbn{display:flex;position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));padding:6px;background:var(--cd);border:1px solid var(--bd);border-radius:24px;box-shadow:0 12px 34px #0004;z-index:30}
+.mbn button{flex:1;position:relative;z-index:1;background:none;display:grid;place-items:center;padding:6px 0;color:var(--mu);font-size:10px}.mbn button.on{color:var(--g);font-weight:800}.mbn button span{font-size:19px;transition:transform .3s}.mbn button.on span{transform:translateY(-3px) scale(1.2)}.mbn em{font-style:normal}}

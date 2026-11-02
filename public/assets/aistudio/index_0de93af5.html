@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EcoRoute Fleet Management</title>
+<!-- Third-party libraries (internet required) -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<!-- Styles: order matters (later files override earlier ones) -->
+<link rel="stylesheet" href="css/01-base.css">
+<link rel="stylesheet" href="css/02-nav-icons.css">
+<link rel="stylesheet" href="css/03-features.css">
+<link rel="stylesheet" href="css/04-obd.css">
+<link rel="stylesheet" href="css/05-corporate-theme.css">
+</head>
+<body>
+<div class="top"><button id="mW" class="on" onclick="mode('web')">Manager Web</button><button id="mA" onclick="mode('app')">Driver App</button></div>
+<div id="root"></div><div id="toast" class="toast"></div>
+<!-- Scripts: order matters (each file extends the previous one) -->
+<script src="js/01-core-app.js"></script>
+<script src="js/02-extensions.js"></script>
+<script src="js/03-features.js"></script>
+<script src="js/04-obd-telemetry.js"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+/* EcoRoute | Flat corporate theme overrides (loaded last) */
+/* ---------- Corporate styling overrides ---------- */
+:root{--gr:#0B5C46;--sh:none;--soft:#EDF3F0}
+:root[data-theme="dark"]{--soft:#1D3A2F}
+.top{background:#0A3D2E}.top button,.tabs button,.pl,.net,.obdb,.top select{border-radius:4px}
+.cd{border-radius:6px;box-shadow:none}.btn,input,select,.nv,.logo,.pt,.ot{border-radius:6px}
+.login .lf .cd{border-radius:8px;box-shadow:0 2px 10px rgba(10,40,30,.08)}
+.login .lf .btn.w{background:var(--g);box-shadow:none;border-radius:6px}
+.login .lp .logo{border-radius:6px;font-size:16px;font-weight:800;letter-spacing:1px}
+.hero{border-radius:6px}.hero:after{display:none}
+.ch i,.ch i.h{border-radius:2px 2px 0 0}.ch i{background:var(--g)}
+.logo{font-size:13px;font-weight:800;letter-spacing:.5px}
+.qi,.ic,.bi,.nv>span:first-child{display:none!important}
+.qa button{gap:0}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor;flex-shrink:0}
+.mk2{width:30px;height:30px;font-size:10px;font-weight:800;color:#fff;box-shadow:none}
+.bn,.mbn,.pt{box-shadow:0 2px 12px rgba(0,0,0,.15)}.bn,.mbn,.ind{border-radius:10px}
