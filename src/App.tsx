@@ -299,7 +299,7 @@ export default function App() {
             {isOnline ? 'ONLINE MODE' : `OFFLINE (${offlineQueue.length} queued)`}
           </button>
 
-          {/* Language Selector */}
+          {/* Language Selector 
           <select
             value={lang}
             onChange={(e) => setLang(e.target.value as SupportedLanguage)}
@@ -310,7 +310,7 @@ export default function App() {
                 {l.label}
               </option>
             ))}
-          </select>
+          </select>*/}
 
           {/* Theme Toggle Button */}
           <button  
