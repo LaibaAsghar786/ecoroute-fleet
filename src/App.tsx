@@ -15,7 +15,6 @@ import {
 } from './types';
 import { ApiService } from './services/api';
 import { ManagerViews } from './components/ManagerViews';
-import { DriverApp } from './components/DriverApp';
 import { AddTruckModal, EditAllowanceModal, AddFuelLogModal } from './components/Modals';
 import { LANGUAGES, SupportedLanguage, t } from './i18n/translations';
 
@@ -222,21 +221,21 @@ export default function App() {
   // Navigation Items for Sidebar
   const NAV_ITEMS = [
     { section: 'FLEET MANAGEMENT' },
-    { id: 'dash', label: t('Dashboard', lang), icon: '📊' },
-    { id: 'fleet', label: t('Fleet & Trucks', lang), icon: '🚚' },
-    { id: 'live', label: t('Live Map', lang), icon: '🗺️' },
-    { id: 'plan', label: t('Multi-stop Planning', lang), icon: '📍' },
+    { id: 'dash', label: t('Dashboard', lang), icon: '' },
+    { id: 'fleet', label: t('Fleet & Trucks', lang), icon: '' },
+    { id: 'live', label: t('Live Map', lang), icon: '' },
+    { id: 'plan', label: t('Multi-stop Planning', lang), icon: '' },
     { section: 'INSIGHTS & AUDIT' },
-    { id: 'route', label: t('Route Savings', lang), icon: '🌱' },
-    { id: 'rep', label: t('Reports', lang), icon: '📄' },
-    { id: 'cred', label: t('Carbon Credits', lang), icon: '🏷️' },
-    { id: 'logs', label: t('Fuel & Fleet Logs', lang), icon: '⛽' },
-    { id: 'alert', label: t('Alerts', lang), icon: '🔔' },
-    { id: 'integ', label: t('Data Integrity', lang), icon: '🔒' },
+    { id: 'route', label: t('Route Savings', lang), icon: '' },
+    { id: 'rep', label: t('Reports', lang), icon: '' },
+    { id: 'cred', label: t('Carbon Credits', lang), icon: '' },
+    { id: 'logs', label: t('Fuel & Fleet Logs', lang), icon: '' },
+    { id: 'alert', label: t('Alerts', lang), icon: '' },
+    { id: 'integ', label: t('Data Integrity', lang), icon: '' },
     { section: 'WORKSPACE' },
-    { id: 'veh', label: t('Vehicle Profiles', lang), icon: '⚙️' },
-    { id: 'set', label: t('Settings', lang), icon: '🛠️' },
-    { id: 'api', label: 'Mobile App API', icon: '📱' },
+    { id: 'veh', label: t('Vehicle Profiles', lang), icon: '' },
+    { id: 'set', label: t('Settings', lang), icon: '' },
+    { id: 'api', label: 'Mobile App API', icon: '' },
   ];
 
   return (
@@ -257,8 +256,9 @@ export default function App() {
             </div>
             <span className="font-extrabold text-sm tracking-tight hidden sm:inline">EcoRoute Fleet</span>
           </div>
+          </div>
 
-          {/* Primary View Mode Switcher */}
+          {/* Primary View Mode Switcher 
           <div className="flex bg-black/20 p-1 rounded-full border border-white/20 font-bold">
             <button
               onClick={() => setAppMode('web')}
@@ -281,7 +281,7 @@ export default function App() {
               Driver App
             </button>
           </div>
-        </div>
+        </div>*/}
 
         {/* Global Status Indicators */}
         <div className="flex items-center gap-2 flex-wrap">
@@ -313,12 +313,12 @@ export default function App() {
           </select>
 
           {/* Theme Toggle Button */}
-          <button
+          <button  
             onClick={() => setIsDark((p) => !p)}
             className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center text-sm transition-colors"
             title="Toggle Light / Dark mode"
           >
-            {isDark ? '☀️' : '🌙'}
+            {isDark ? '' : ''}
           </button>
 
           {/* Reset Demo Data Button */}
@@ -407,7 +407,7 @@ export default function App() {
                       Sign in to Fleet Manager
                     </h2>
                     <p className="text-xs text-[#5F6F6A] dark:text-[#9DB0A8]">
-                      Demo account: aamir.joyo@ecoroute.com · demo1234
+                      Demo account: laiba.asghar@ecoroute.com · demo1234
                     </p>
                   </div>
 

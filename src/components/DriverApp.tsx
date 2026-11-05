@@ -333,7 +333,7 @@ export const DriverApp: React.FC<DriverAppProps> = ({
                 </div>
               ) : (
                 <div className="text-xs text-[#D64545] p-3 bg-rose-50 dark:bg-rose-950/40 rounded-xl">
-                  ⚠️ No ECU telemetry received. Verify that the Bluetooth OBD-II dongle is plugged into the vehicle port.
+                  No ECU telemetry received. Verify that the Bluetooth OBD-II dongle is plugged into the vehicle port.
                 </div>
               )}
             </div>
@@ -367,7 +367,7 @@ export const DriverApp: React.FC<DriverAppProps> = ({
                 <b className="text-[#0B6E4F] dark:text-[#4ADE80]">Eco-Route Savings Today</b>
                 <div className="text-[#5F6F6A] dark:text-[#9DB0A8]">16 kg CO₂ · 6.0 L Diesel · 11 min saved</div>
               </div>
-              <span className="text-base">🌱</span>
+              <span className="text-base"></span>
             </div>
 
             {/* Quick Actions */}
@@ -376,21 +376,21 @@ export const DriverApp: React.FC<DriverAppProps> = ({
                 onClick={() => setScreen('fuel')}
                 className="p-3 bg-white dark:bg-[#16241F] border border-[#E1E8E5] dark:border-[#25382F] rounded-xl text-xs font-bold text-center hover:bg-slate-50 transition-colors"
               >
-                <div className="text-base mb-1">⛽</div>
+                <div className="text-base mb-1"></div>
                 Log Fuel
               </button>
               <button
                 onClick={() => setScreen('offm')}
                 className="p-3 bg-white dark:bg-[#16241F] border border-[#E1E8E5] dark:border-[#25382F] rounded-xl text-xs font-bold text-center hover:bg-slate-50 transition-colors"
               >
-                <div className="text-base mb-1">🗺️</div>
+                <div className="text-base mb-1"></div>
                 Offline Maps
               </button>
               <button
                 onClick={() => setScreen('sync')}
                 className="p-3 bg-white dark:bg-[#16241F] border border-[#E1E8E5] dark:border-[#25382F] rounded-xl text-xs font-bold text-center hover:bg-slate-50 transition-colors"
               >
-                <div className="text-base mb-1">🔄</div>
+                <div className="text-base mb-1"></div>
                 Sync Status
               </button>
             </div>
@@ -557,7 +557,7 @@ export const DriverApp: React.FC<DriverAppProps> = ({
             {showWarning && (
               <div className="bg-[#FFF8E8] dark:bg-amber-950/60 border-2 border-[#F5A524] p-3.5 rounded-xl space-y-2">
                 <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200 font-bold">
-                  <span>⚠️</span>
+                  <span></span>
                   <span>Early Warning: Slow traffic ahead in 900 m</span>
                 </div>
                 <p className="text-[11px] text-amber-900 dark:text-amber-100">
@@ -598,7 +598,7 @@ export const DriverApp: React.FC<DriverAppProps> = ({
                   }}
                   className="w-full py-2.5 border border-[#E1E8E5] dark:border-[#25382F] bg-white dark:bg-[#16241F] font-bold rounded-xl"
                 >
-                  🛑 Stop / Park Vehicle
+                  Stop / Park Vehicle
                 </button>
               )}
 
@@ -623,7 +623,7 @@ export const DriverApp: React.FC<DriverAppProps> = ({
         {screen === 'eco' && (
           <div className="space-y-3.5 text-xs">
             <div className="p-3 bg-amber-50 border-2 border-amber-400 rounded-xl font-bold text-amber-900">
-              ⚠️ Early Warning: Congestion Ahead
+              Early Warning: Congestion Ahead
               <div className="text-[11px] font-normal text-amber-800 mt-0.5">
                 Reroute decision point before exit in 1.2 km.
               </div>
@@ -888,35 +888,35 @@ export const DriverApp: React.FC<DriverAppProps> = ({
           onClick={() => setScreen('home')}
           className={`flex-1 py-1.5 flex flex-col items-center rounded-xl transition-colors ${screen === 'home' ? 'text-[#0B6E4F] font-bold bg-[#EAF5F0] dark:bg-[#1D3A2F]' : 'text-[#5F6F6A]'}`}
         >
-          <span className="text-base">🏠</span>
+          <span className="text-base"></span>
           {t('Home', lang)}
         </button>
         <button
           onClick={() => setScreen(isTripActive ? 'live' : 'trip')}
           className={`flex-1 py-1.5 flex flex-col items-center rounded-xl transition-colors ${['trip', 'live', 'eco', 'summary'].includes(screen) ? 'text-[#0B6E4F] font-bold bg-[#EAF5F0] dark:bg-[#1D3A2F]' : 'text-[#5F6F6A]'}`}
         >
-          <span className="text-base">🚀</span>
+          <span className="text-base"></span>
           {t('Trip', lang)}
         </button>
         <button
           onClick={() => setScreen('fuel')}
           className={`flex-1 py-1.5 flex flex-col items-center rounded-xl transition-colors ${screen === 'fuel' ? 'text-[#0B6E4F] font-bold bg-[#EAF5F0] dark:bg-[#1D3A2F]' : 'text-[#5F6F6A]'}`}
         >
-          <span className="text-base">⛽</span>
+          <span className="text-base"></span>
           Refill
         </button>
         <button
           onClick={() => setScreen('offm')}
           className={`flex-1 py-1.5 flex flex-col items-center rounded-xl transition-colors ${screen === 'offm' ? 'text-[#0B6E4F] font-bold bg-[#EAF5F0] dark:bg-[#1D3A2F]' : 'text-[#5F6F6A]'}`}
         >
-          <span className="text-base">🗺️</span>
+          <span className="text-base"></span>
           Maps
         </button>
         <button
           onClick={() => setScreen('profile')}
           className={`flex-1 py-1.5 flex flex-col items-center rounded-xl transition-colors ${screen === 'profile' ? 'text-[#0B6E4F] font-bold bg-[#EAF5F0] dark:bg-[#1D3A2F]' : 'text-[#5F6F6A]'}`}
         >
-          <span className="text-base">👤</span>
+          <span className="text-base"></span>
           {t('Profile', lang)}
         </button>
       </div>

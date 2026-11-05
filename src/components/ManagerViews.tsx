@@ -191,25 +191,25 @@ export const ManagerViews: React.FC<ManagerViewsProps> = (props) => {
             onClick={() => setView('plan')}
             className="px-3.5 py-2 bg-white dark:bg-[#16241F] border border-[#E1E8E5] dark:border-[#25382F] hover:bg-slate-50 rounded-xl text-xs font-bold transition-colors"
           >
-            🗺️ Multi-stop Planning
+            Multi-stop Planning
           </button>
           <button
             onClick={() => setView('logs')}
             className="px-3.5 py-2 bg-white dark:bg-[#16241F] border border-[#E1E8E5] dark:border-[#25382F] hover:bg-slate-50 rounded-xl text-xs font-bold transition-colors"
           >
-            ⛽ Fuel & Fleet Logs
+            Fuel & Fleet Logs
           </button>
           <button
             onClick={() => setView('veh')}
             className="px-3.5 py-2 bg-white dark:bg-[#16241F] border border-[#E1E8E5] dark:border-[#25382F] hover:bg-slate-50 rounded-xl text-xs font-bold transition-colors"
           >
-            🚚 Vehicle Profiles
+            Vehicle Profiles
           </button>
           <button
             onClick={() => setView('rep')}
             className="px-3.5 py-2 bg-white dark:bg-[#16241F] border border-[#E1E8E5] dark:border-[#25382F] hover:bg-slate-50 rounded-xl text-xs font-bold transition-colors"
           >
-            📊 Reports & PDF
+            Reports & PDF
           </button>
         </div>
 
@@ -1175,7 +1175,7 @@ export const ManagerViews: React.FC<ManagerViewsProps> = (props) => {
               onClick={handleRunGA}
               className="w-full py-3 bg-[#0B6E4F] hover:bg-[#08553D] text-white font-bold rounded-xl text-xs shadow-sm flex items-center justify-center gap-2"
             >
-              <span>✨</span> Run Genetic Algorithm Optimizer
+              <span></span> Run Genetic Algorithm Optimizer
             </button>
           </div>
 
@@ -1619,7 +1619,7 @@ export const ManagerViews: React.FC<ManagerViewsProps> = (props) => {
               onClick={onSimulateTamper}
               className="px-3.5 py-2 bg-[#D64545] hover:bg-[#B52B2B] text-white font-bold rounded-xl text-xs shadow-sm"
             >
-              ⚠️ Run Tamper Test Demo
+              Run Tamper Test Demo
             </button>
           </div>
         </div>
@@ -1756,7 +1756,7 @@ export const ManagerViews: React.FC<ManagerViewsProps> = (props) => {
         {/* Integration Architecture Card */}
         <div className="bg-emerald-50 dark:bg-[#1D3A2F] border border-emerald-200 dark:border-emerald-800 p-5 rounded-2xl text-xs text-emerald-950 dark:text-emerald-100 space-y-2">
           <div className="flex items-center gap-2">
-            <span className="text-xl">📱</span>
+            <span className="text-xl"></span>
             <b className="text-sm text-emerald-900 dark:text-emerald-200">Will our member's separate mobile app conflict with this web app?</b>
           </div>
           <p className="leading-relaxed">
@@ -1798,7 +1798,7 @@ export const ManagerViews: React.FC<ManagerViewsProps> = (props) => {
               }}
               className="px-4 py-2 bg-[#0B6E4F] hover:bg-[#08553D] text-white font-bold rounded-xl text-xs shadow-xs"
             >
-              🚀 Send Test Telemetry Packet
+              Send Test Telemetry Packet
             </button>
           </div>
         </div>
