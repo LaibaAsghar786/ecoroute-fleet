@@ -403,6 +403,9 @@ apiRouter.delete('/vehicle-profiles/:id', (req: Request, res: Response) => {
   res.json({ success: true });
 });
 
+
+
+
 // Allow CORS for external mobile apps connecting to the backend
 apiRouter.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');

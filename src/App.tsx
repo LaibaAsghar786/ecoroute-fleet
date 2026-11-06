@@ -17,13 +17,14 @@ import { ApiService } from './services/api';
 import { ManagerViews } from './components/ManagerViews';
 import { AddTruckModal, EditAllowanceModal, AddFuelLogModal } from './components/Modals';
 import { LANGUAGES, SupportedLanguage, t } from './i18n/translations';
+import {Sun , Moon} from 'lucide-react';
 
 export default function App() {
   // Mode: 'web' (Manager Dashboard) or 'app' (Driver PWA)
   const [appMode, setAppMode] = useState<'web' | 'app'>('web');
 
   // Manager Authentication State
-  const [isManagerLoggedIn, setIsManagerLoggedIn] = useState(true);
+  const [isManagerLoggedIn, setIsManagerLoggedIn] = useState(false);
   const [managerEmail, setManagerEmail] = useState('laiba.asghar@ecoroute.com');
   const [managerPassword, setManagerPassword] = useState('demo1234');
   const [loginError, setLoginError] = useState('');
@@ -318,7 +319,7 @@ export default function App() {
             className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center text-sm transition-colors"
             title="Toggle Light / Dark mode"
           >
-            {isDark ? '' : ''}
+            {isDark ? <Sun size={16} />  : <Moon size={16} />}
           </button>
 
           {/* Reset Demo Data Button */}
