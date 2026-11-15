@@ -1,0 +1,6 @@
+{
+  "name": "EcoRoute Fleet - Carbon Emission & Telemetry Intelligence",
+  "description": "Comprehensive CO2 and fuel tracking platform for logistics fleets with manager dashboard, OBD-II telemetry, eco-routing, and driver PWA.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
