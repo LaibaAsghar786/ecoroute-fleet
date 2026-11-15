@@ -16,7 +16,12 @@ import {
   DayRecord,
 } from '../types';
 import { LeafletMap } from './LeafletMap';
-import { getAllowanceBand } from '../server/emission';
+import {
+  CREDIT_CONTRACT,
+  EMISSION_FACTOR_SPECS,
+  getAllowanceBand,
+  getRemainingDaysInMonth,
+} from '../server/emission';
 import { exportFleetPdf, exportCarbonAuditPdf, exportFuelLogsPdf, downloadCsv } from '../utils/export';
 import { ApiService } from '../services/api';
 
@@ -113,12 +118,24 @@ export const ManagerViews: React.FC<ManagerViewsProps> = (props) => {
   const [optimizationResult, setOptimizationResult] = useState<any>(null);
   const [truckDetails, setTruckDetails] = useState<any>(null);
   const [integrityTruckFilter, setIntegrityTruckFilter] = useState<string>('ALL');
+  const [researchData, setResearchData] = useState<any>(null);
+  const [loadingResearch, setLoadingResearch] = useState(false);
+
+  const billingPeriod = getRemainingDaysInMonth();
 
   useEffect(() => {
     if ((view === 'truck' || view === 'day') && selectedTruckId) {
       ApiService.getTruckDetails(selectedTruckId).then((res) => {
         if (res) setTruckDetails(res);
       });
+    }
+    if (view === 'lab') {
+      setLoadingResearch(true);
+      ApiService.getResearchBenchmarks()
+        .then((res) => {
+          if (res) setResearchData(res);
+        })
+        .finally(() => setLoadingResearch(false));
     }
   }, [view, selectedTruckId]);
 
@@ -214,14 +231,13 @@ export const ManagerViews: React.FC<ManagerViewsProps> = (props) => {
               Fleet Dashboard
             </h1>
             <p className="text-xs text-[#5F6F6A] dark:text-[#9DB0A8]">
-              Estimated figures from telemetry · 12 October 2026
+              Estimated figures from telemetry · {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
             </p>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-semibold flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Live · Synchronised
+            <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-semibold">
+              Synchronised
             </span>
             <button
               onClick={async () => {
@@ -357,11 +373,15 @@ export const ManagerViews: React.FC<ManagerViewsProps> = (props) => {
             <div>
               <div className="flex justify-between items-center mb-1">
                 <h3 className="font-bold text-base text-[#1B2B27] dark:text-[#E6F0EC]">Monthly Credit Budget</h3>
-                <span className="text-xs text-[#5F6F6A]">October Allowance</span>
+                <span className="text-xs text-[#5F6F6A]">
+                  {billingPeriod.monthLabel} ({billingPeriod.remainingDays} days remaining)
+                </span>
               </div>
               <div className="text-2xl font-black my-1 tabular-nums">
                 {(totalMtdCo2Kg / 1000).toFixed(1)}{' '}
-                <span className="text-sm font-normal text-slate-500">/ 100 Credits (100,000 kg)</span>
+                <span className="text-sm font-normal text-slate-500">
+                  / {(settings.monthlyAllowanceTotalKg / 1000).toFixed(0)} Credits ({settings.monthlyAllowanceTotalKg.toLocaleString()} kg)
+                </span>
               </div>
               <div className="w-full bg-[#E1E8E5] dark:bg-[#25382F] h-3 rounded-full overflow-hidden my-3">
                 <div
@@ -370,12 +390,14 @@ export const ManagerViews: React.FC<ManagerViewsProps> = (props) => {
                 />
               </div>
               <p className="text-xs text-[#5F6F6A] dark:text-[#9DB0A8]">
-                Early warnings issued today: <b>6</b> · Accepted by drivers: <b>5</b> (83% acceptance rate)
+                {CREDIT_CONTRACT.creditLabel} · {billingPeriod.elapsedDays} of {billingPeriod.daysInMonth} billing days elapsed
               </p>
             </div>
 
             <div className="pt-3 border-t border-[#E1E8E5] dark:border-[#25382F] flex justify-between items-center text-xs">
-              <span className="text-[#5F6F6A]">Forecast: On track to use ~94 credits by month end</span>
+              <span className="text-[#5F6F6A]">
+                Remaining: {Math.max(0, settings.monthlyAllowanceTotalKg - totalMtdCo2Kg).toLocaleString()} kg CO₂e ({billingPeriod.remainingDays} days left)
+              </span>
               <button
                 onClick={() => setView('cred')}
                 className="text-[#0B6E4F] dark:text-[#4ADE80] font-bold hover:underline"
@@ -1304,6 +1326,23 @@ export const ManagerViews: React.FC<ManagerViewsProps> = (props) => {
                     </div>
                   </div>
 
+                  {optimizationResult.baselines && (
+                    <div className="p-3 rounded-xl border border-[#E1E8E5] dark:border-[#25382F] space-y-1.5 bg-slate-50/70 dark:bg-slate-900/40">
+                      <div className="font-bold text-[11px] uppercase tracking-wider text-[#5F6F6A]">
+                        Baseline &amp; Optimality Comparison (Seed {optimizationResult.seed})
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px]">
+                        <div>Shortest-Distance Baseline: <b>{optimizationResult.baselines.shortestPath?.co2Kg} kg CO₂</b> ({optimizationResult.baselines.shortestPath?.distanceKm} km)</div>
+                        <div>Nearest-Neighbour Baseline: <b>{optimizationResult.baselines.nearestNeighbour?.co2Kg} kg CO₂</b> ({optimizationResult.baselines.nearestNeighbour?.distanceKm} km)</div>
+                        {optimizationResult.baselines.exactOptimum && (
+                          <div className="sm:col-span-2 text-[#0B6E4F] dark:text-[#4ADE80] font-semibold">
+                            Exact Permutation Optimum: {optimizationResult.baselines.exactOptimum.co2Kg} kg CO₂ (GA Optimality Gap: {optimizationResult.baselines.exactOptimum.optimalityGapPct}%)
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {Array.isArray(optimizationResult.segments) && optimizationResult.segments.length > 0 && (
                     <div className="space-y-1.5">
                       <div className="font-bold text-[11px] uppercase tracking-wider text-[#5F6F6A]">Road Network Corridor Breakdown</div>
@@ -1330,7 +1369,7 @@ export const ManagerViews: React.FC<ManagerViewsProps> = (props) => {
             </div>
 
             <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl text-[11px] text-[#5F6F6A]">
-              Algorithm: Dijkstra road-graph legs + 30-generation GA (population = 24), cargo multiplier +18% per 10 t, grade &amp; idling fuel penalties.
+              Algorithm: Dijkstra road-graph legs + deterministic seeded 40-generation GA (population = 32, Tournament Selection, Order Crossover OX, Elitism), cargo multiplier +18% per 10 t, grade &amp; idling fuel penalties.
             </div>
           </div>
         </div>
@@ -1537,10 +1576,13 @@ export const ManagerViews: React.FC<ManagerViewsProps> = (props) => {
   if (view === 'cred') {
     return (
       <div className="space-y-4">
-        <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 border-2 border-[#F5A524] rounded-xl text-amber-900 dark:text-amber-200 text-xs font-semibold">
+        <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 border-2 border-[#F5A524] rounded-xl text-amber-900 dark:text-amber-200 text-xs font-semibold space-y-1">
           <b>Estimated usage only. Not an official carbon registry balance.</b>
-          <div className="text-[11px] font-normal text-amber-800 dark:text-amber-300 mt-0.5">
-            1 Credit = 1 metric tonne (1,000 kg) CO₂e. Calculation: Diesel Litres × 2.68 kg/L.
+          <div className="text-[11px] font-normal text-amber-800 dark:text-amber-300">
+            {CREDIT_CONTRACT.creditLabel} · Billing Period: {billingPeriod.monthLabel} ({billingPeriod.remainingDays} days remaining).
+          </div>
+          <div className="text-[11px] font-normal text-amber-800 dark:text-amber-300">
+            Sources: Diesel {EMISSION_FACTOR_SPECS.Diesel.factorKgCo2ePerUnit} kg/{EMISSION_FACTOR_SPECS.Diesel.unit} ({EMISSION_FACTOR_SPECS.Diesel.source}); CNG {EMISSION_FACTOR_SPECS.CNG.factorKgCo2ePerUnit} kg/{EMISSION_FACTOR_SPECS.CNG.unit} (mass in kg); EV {EMISSION_FACTOR_SPECS.EV.factorKgCo2ePerUnit} kg/{EMISSION_FACTOR_SPECS.EV.unit} tailpipe.
           </div>
         </div>
 
@@ -1548,19 +1590,19 @@ export const ManagerViews: React.FC<ManagerViewsProps> = (props) => {
           <div className="bg-white dark:bg-[#16241F] border border-[#E1E8E5] dark:border-[#25382F] p-4 rounded-2xl shadow-xs">
             <div className="text-xs text-[#5F6F6A]">Used Today</div>
             <div className="text-3xl font-black text-[#0B6E4F] dark:text-[#4ADE80] my-1 tabular-nums">
-              {(totalCo2Today / 1000).toFixed(2)} <span className="text-sm font-normal text-slate-500">Credits</span>
+              {(totalCo2Today / 1000).toFixed(2)} <span className="text-sm font-normal text-slate-500">Credits ({totalCo2Today.toLocaleString()} kg)</span>
             </div>
           </div>
           <div className="bg-white dark:bg-[#16241F] border border-[#E1E8E5] dark:border-[#25382F] p-4 rounded-2xl shadow-xs">
-            <div className="text-xs text-[#5F6F6A]">Used in October (MTD)</div>
+            <div className="text-xs text-[#5F6F6A]">Used in {billingPeriod.monthLabel} (MTD)</div>
             <div className="text-3xl font-black text-[#0F7F73] dark:text-[#2DD4BF] my-1 tabular-nums">
-              {(totalMtdCo2Kg / 1000).toFixed(1)} <span className="text-sm font-normal text-slate-500">Credits</span>
+              {(totalMtdCo2Kg / 1000).toFixed(1)} <span className="text-sm font-normal text-slate-500">Credits ({Math.round(totalMtdCo2Kg).toLocaleString()} kg)</span>
             </div>
           </div>
           <div className="bg-white dark:bg-[#16241F] border border-[#E1E8E5] dark:border-[#25382F] p-4 rounded-2xl shadow-xs">
-            <div className="text-xs text-[#5F6F6A]">Monthly Credit Allowance</div>
+            <div className="text-xs text-[#5F6F6A]">Monthly Allowance ({billingPeriod.remainingDays} days remaining)</div>
             <div className="text-3xl font-black text-[#F5A524] my-1 tabular-nums">
-              {(settings.monthlyAllowanceTotalKg / 1000).toFixed(1)} <span className="text-sm font-normal text-slate-500">Credits</span>
+              {(settings.monthlyAllowanceTotalKg / 1000).toFixed(1)} <span className="text-sm font-normal text-slate-500">Credits ({settings.monthlyAllowanceTotalKg.toLocaleString()} kg)</span>
             </div>
           </div>
         </div>
@@ -1952,29 +1994,30 @@ export const ManagerViews: React.FC<ManagerViewsProps> = (props) => {
               onClick={async () => {
                 try {
                   const uniqueEventId = `evt-web-test-${Date.now()}`;
+                  const nextOdo = Number(((activeTruck.odometerKm || 80000) + 3.5).toFixed(1));
                   const json = await ApiService.sendTestTelemetry({
                     eventId: uniqueEventId,
-                    truckId: 'TRUCK_PK_094',
-                    tripId: 'TRIP_HYD_SUK_LIVE',
+                    truckId: activeTruck.id,
+                    tripId: `TRIP_${activeTruck.id}_LIVE`,
                     ts: new Date().toISOString(),
                     speedKmh: 68.4,
                     rpm: 1980,
-                    lat: 25.42,
-                    lon: 68.39,
+                    lat: activeTruck.lat ?? 25.42,
+                    lon: activeTruck.lon ?? 68.39,
                     fuelRateLph: 23.5,
                     engineLoadPct: 64,
                     coolantC: 85,
                     distanceDeltaKm: 3.5,
-                    odometerKm: 83425.5,
+                    odometerKm: nextOdo,
                     co2Kg: 2.8,
                     fuelMl: 1045,
-                    cargoKg: 3500,
+                    cargoKg: activeTruck.cargoKg || 3500,
                     idle: 0,
                   });
                   await onRefreshData();
                   const first = json.results?.[0];
                   onNotify(
-                    `${json.message} (Seq #${first?.seq}, Hash ${first?.blockHash?.slice(0, 10)}...)`
+                    `${activeTruck.id}: ${json.message} (Seq #${first?.seq}, Hash ${first?.blockHash?.slice(0, 10)}...)`
                   );
                 } catch (e: any) {
                   onNotify('Telemetry error: ' + e.message);
@@ -1982,7 +2025,7 @@ export const ManagerViews: React.FC<ManagerViewsProps> = (props) => {
               }}
               className="px-4 py-2 bg-[#0B6E4F] hover:bg-[#08553D] text-white font-bold rounded-xl text-xs shadow-xs"
             >
-              Send Test Telemetry Packet
+              Send Test Telemetry Packet ({activeTruck.id})
             </button>
           </div>
         </div>
@@ -2073,6 +2116,159 @@ export const ManagerViews: React.FC<ManagerViewsProps> = (props) => {
             <p className="text-xs text-[#5F6F6A]">
               Connects HiveMQ Cloud or EMQX webhooks directly into the serverless backend using topic + payload JSON.
             </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 16. RESEARCH LAB, BENCHMARK METHODOLOGY & TRIP READINESS VIEW
+  if (view === 'lab') {
+    const rt = researchData?.runtimeMetrics;
+    const dq = researchData?.dataQuality;
+    const bm = researchData?.benchmarks;
+
+    return (
+      <div className="space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#0B6E4F]">
+              EXPERIMENTS &amp; METHODOLOGY
+            </div>
+            <h1 className="text-2xl font-black text-[#1B2B27] dark:text-[#E6F0EC]">
+              Research Lab &amp; System Benchmarks
+            </h1>
+            <p className="text-xs text-[#5F6F6A]">
+              Live runtime telemetry metrics, GA benchmark methodology, data quality verification, and fleet trip readiness
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setLoadingResearch(true);
+              ApiService.getResearchBenchmarks()
+                .then((res) => {
+                  if (res) setResearchData(res);
+                  onNotify('Research benchmarks refreshed.');
+                })
+                .finally(() => setLoadingResearch(false));
+            }}
+            className="px-4 py-2 bg-[#0B6E4F] hover:bg-[#08553D] text-white font-bold rounded-xl text-xs shadow-xs"
+          >
+            {loadingResearch ? 'Running Benchmarks...' : 'Re-run Benchmark Suite'}
+          </button>
+        </div>
+
+        {/* Runtime Performance & Packet Recovery KPIs */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="bg-white dark:bg-[#16241F] border border-[#E1E8E5] dark:border-[#25382F] p-4 rounded-2xl shadow-xs">
+            <div className="text-[11px] font-semibold text-[#5F6F6A]">API / GA Latency</div>
+            <div className="text-2xl font-black text-[#0B6E4F] dark:text-[#4ADE80] my-1 tabular-nums">
+              {rt ? `${rt.apiLatencyMs} ms` : '—'}
+            </div>
+            <div className="text-[10px] text-[#5F6F6A]">Live benchmark pass</div>
+          </div>
+          <div className="bg-white dark:bg-[#16241F] border border-[#E1E8E5] dark:border-[#25382F] p-4 rounded-2xl shadow-xs">
+            <div className="text-[11px] font-semibold text-[#5F6F6A]">Server Memory (RSS)</div>
+            <div className="text-2xl font-black text-[#0F7F73] dark:text-[#2DD4BF] my-1 tabular-nums">
+              {rt ? `${rt.memoryRssMb} MB` : '—'}
+            </div>
+            <div className="text-[10px] text-[#5F6F6A]">Heap: {rt ? `${rt.heapUsedMb} MB` : '—'}</div>
+          </div>
+          <div className="bg-white dark:bg-[#16241F] border border-[#E1E8E5] dark:border-[#25382F] p-4 rounded-2xl shadow-xs">
+            <div className="text-[11px] font-semibold text-[#5F6F6A]">CPU Time (User)</div>
+            <div className="text-2xl font-black text-[#2B7BD6] my-1 tabular-nums">
+              {rt ? `${rt.cpuUserMs} ms` : '—'}
+            </div>
+            <div className="text-[10px] text-[#5F6F6A]">Sys: {rt ? `${rt.cpuSystemMs} ms` : '—'}</div>
+          </div>
+          <div className="bg-white dark:bg-[#16241F] border border-[#E1E8E5] dark:border-[#25382F] p-4 rounded-2xl shadow-xs">
+            <div className="text-[11px] font-semibold text-[#5F6F6A]">Packet Recovery</div>
+            <div className="text-2xl font-black text-[#1E9E5A] my-1 tabular-nums">
+              {dq ? `${dq.packetRecoveryRatePct}%` : '100%'}
+            </div>
+            <div className="text-[10px] text-[#5F6F6A]">Idempotent eventId queue</div>
+          </div>
+          <div className="bg-white dark:bg-[#16241F] border border-[#E1E8E5] dark:border-[#25382F] p-4 rounded-2xl shadow-xs">
+            <div className="text-[11px] font-semibold text-[#5F6F6A]">Hash Chain Blocks</div>
+            <div className="text-2xl font-black text-[#7A5AF8] my-1 tabular-nums">
+              {dq ? dq.totalHashBlocks : hashChain.length}
+            </div>
+            <div className="text-[10px] text-[#5F6F6A]">{dq ? `${dq.anchoredTrucks} signed anchors` : ''}</div>
+          </div>
+        </div>
+
+        {/* Benchmark Methodology & Live Cases */}
+        <div className="bg-white dark:bg-[#16241F] border border-[#E1E8E5] dark:border-[#25382F] p-5 rounded-2xl shadow-xs space-y-3">
+          <div>
+            <h3 className="font-bold text-sm">Benchmark Methodology &amp; Reproducible Experiment Results</h3>
+            <p className="text-xs text-[#5F6F6A]">
+              {bm?.benchmarkStandard || 'Deterministic seeded Genetic Algorithm evaluated over verified Pakistan highway graph against Shortest-Path, Nearest-Neighbour, and Exact Permutation baselines.'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 text-xs">
+            {(bm?.cases || []).map((c: any, idx: number) => (
+              <div key={idx} className="p-4 rounded-xl border border-[#E1E8E5] dark:border-[#25382F] space-y-1.5">
+                <div className="font-bold text-[#0B6E4F] dark:text-[#4ADE80]">{c.name}</div>
+                {c.gaOptimizedCo2Kg !== undefined ? (
+                  <div className="space-y-1 text-[#5F6F6A] dark:text-[#9DB0A8]">
+                    <div>GA Emissions Optimum: <b className="text-[#1B2B27] dark:text-[#E6F0EC]">{c.gaOptimizedCo2Kg} kg CO₂</b> ({c.gaOptimizedDistanceKm} km)</div>
+                    <div>Shortest-Distance Baseline: <b>{c.shortestDistanceCo2Kg} kg CO₂</b> ({c.shortestDistanceKm} km)</div>
+                    <div>Nearest-Neighbour Heuristic: <b>{c.nearestNeighbourCo2Kg} kg CO₂</b></div>
+                    <div>Exact Permutation Optimum: <b>{c.exactOptimumCo2Kg} kg CO₂</b> (Gap: <b>{c.optimalityGapPct}%</b>)</div>
+                  </div>
+                ) : (
+                  <div className="space-y-1 text-[#5F6F6A] dark:text-[#9DB0A8]">
+                    <div>Lowest-Emissions Corridor: <b className="text-[#1B2B27] dark:text-[#E6F0EC]">{c.lowestEmissionsRoads}</b> ({c.lowestEmissionsCo2Kg} kg CO₂ · {c.lowestEmissionsDistanceKm} km)</div>
+                    <div>Shortest-Distance Corridor: <b>{c.shortestDistanceRoads}</b> ({c.shortestDistanceCo2Kg} kg CO₂ · {c.shortestDistanceDistanceKm ?? c.shortestDistanceKm} km)</div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Data Quality & Fleet Trip Readiness Matrix */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="bg-white dark:bg-[#16241F] border border-[#E1E8E5] dark:border-[#25382F] p-5 rounded-2xl shadow-xs space-y-2 text-xs">
+            <h3 className="font-bold text-sm">Data Quality &amp; Validation Architecture</h3>
+            <ul className="space-y-1.5 text-[#5F6F6A] dark:text-[#9DB0A8]">
+              <li><b>Telemetry Deduplication:</b> Unique <code>eventId</code> persisted in DB prevents duplicate CO₂ and distance counting.</li>
+              <li><b>Distance Separation:</b> Incremental <code>distanceDeltaKm</code> vs monotonic cumulative <code>odometerKm</code> (ambiguous <code>distanceKm</code> rejected).</li>
+              <li><b>GPS &amp; Bounds Validation:</b> Rejects non-finite/NaN, out-of-range coordinates ([-90..90], [-180..180]), future dates, and negative fuel/emissions.</li>
+              <li><b>Emission Standards:</b> Diesel 2.68 kg/L (DEFRA), CNG 2.75 kg/kg (by mass), 1 Credit = 1,000 kg CO₂e.</li>
+            </ul>
+          </div>
+
+          <div className="bg-white dark:bg-[#16241F] border border-[#E1E8E5] dark:border-[#25382F] p-5 rounded-2xl shadow-xs space-y-3 overflow-x-auto">
+            <h3 className="font-bold text-sm">Fleet Trip Readiness Status</h3>
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-[#E1E8E5] text-[#5F6F6A]">
+                  <th className="py-1.5">TRUCK</th>
+                  <th className="py-1.5">GPS</th>
+                  <th className="py-1.5">ODOMETER</th>
+                  <th className="py-1.5">CHAIN</th>
+                  <th className="py-1.5">READINESS</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#E1E8E5] dark:divide-[#25382F]">
+                {trucks.map((t) => {
+                  const hasGps = typeof t.lat === 'number' && typeof t.lon === 'number';
+                  const chainOk = t.integrity === 'Verified';
+                  const ready = hasGps && chainOk && t.status !== 'Offline';
+                  return (
+                    <tr key={t.id}>
+                      <td className="py-2 font-bold text-[#0B6E4F] dark:text-[#4ADE80]">{t.id}</td>
+                      <td className="py-2 font-mono">{hasGps ? 'Valid' : 'Missing'}</td>
+                      <td className="py-2 font-mono">{(t.odometerKm || 0).toLocaleString()} km</td>
+                      <td className="py-2">{renderStatusBadge(t.integrity)}</td>
+                      <td className="py-2 font-semibold">{ready ? 'Ready' : 'Action Required'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

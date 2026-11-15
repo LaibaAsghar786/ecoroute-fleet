@@ -15,11 +15,14 @@ import {
   VehicleProfile,
   CompanySettings,
 } from './types';
-import { ApiService } from './services/api';
+import { ApiService, CacheSyncState } from './services/api';
+import { OfflineStore } from './utils/offlineStore';
 import { ManagerViews } from './components/ManagerViews';
 import { AddTruckModal, EditAllowanceModal, AddFuelLogModal } from './components/Modals';
 
 export default function App() {
+  const initialPrefs = OfflineStore.loadPrefs();
+
   // Authentication state: always starts on login page on initial load
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
@@ -28,13 +31,21 @@ export default function App() {
   const [loginError, setLoginError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  // Light / Dark theme toggle
-  const [isDark, setIsDark] = useState(false);
+  // Light / Dark theme toggle (persisted)
+  const [isDark, setIsDark] = useState(Boolean(initialPrefs.isDark));
 
-  // Navigation View State
-  const [currentView, setCurrentView] = useState('dash');
-  const [selectedTruckId, setSelectedTruckId] = useState('TRUCK_PK_094');
-  const [selectedDay, setSelectedDay] = useState(12);
+  // Navigation View State (persisted)
+  const [currentView, setCurrentView] = useState(initialPrefs.currentView || 'dash');
+  const [selectedTruckId, setSelectedTruckId] = useState(initialPrefs.selectedTruckId || 'TRUCK_PK_094');
+  const [selectedDay, setSelectedDay] = useState(initialPrefs.selectedDay || 12);
+
+  // Real browser connectivity & cache sync state (no manual simulator button)
+  const [syncState, setSyncState] = useState<CacheSyncState>({
+    isUsingCachedData: false,
+    lastSyncedAt: null,
+    lastError: null,
+  });
+  const [pendingOutboxCount, setPendingOutboxCount] = useState(0);
 
   // Domain Data State
   const [trucks, setTrucks] = useState<Truck[]>([]);
@@ -94,6 +105,10 @@ export default function App() {
       }
       if (profilesRes) setVehicleProfiles(profilesRes);
       if (settingsRes) setSettings(settingsRes);
+
+      setSyncState(ApiService.getSyncState());
+      const outbox = await OfflineStore.listOutbox();
+      setPendingOutboxCount(outbox.length);
     } catch (err) {
       console.warn('[EcoRoute] Error loading fleet data:', err);
     }
@@ -102,9 +117,41 @@ export default function App() {
   useEffect(() => {
     if (!isLoggedIn) return;
     refreshData();
-    const interval = setInterval(refreshData, 10000);
-    return () => clearInterval(interval);
-  }, [isLoggedIn, refreshData]);
+    const interval = setInterval(async () => {
+      await ApiService.flushOutbox(false);
+      await refreshData();
+    }, 10000);
+
+    const handleOnline = async () => {
+      const result = await ApiService.flushOutbox(true);
+      if (result.syncedCount > 0) {
+        showToast(`Synchronised ${result.syncedCount} queued record(s) with server.`);
+      }
+      await refreshData();
+    };
+
+    const handleOffline = () => {
+      setSyncState((prev) => ({
+        ...prev,
+        isUsingCachedData: true,
+        lastError: 'Browser connection offline; displaying cached data.',
+      }));
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [isLoggedIn, refreshData, showToast]);
+
+  // Persist UI preferences across reloads
+  useEffect(() => {
+    OfflineStore.savePrefs({ isDark, currentView, selectedTruckId, selectedDay });
+  }, [isDark, currentView, selectedTruckId, selectedDay]);
 
   // Theme Sync
   useEffect(() => {
@@ -171,9 +218,13 @@ export default function App() {
   };
 
   const handleSaveFuelLog = async (logData: Partial<FuelLog>) => {
-    await ApiService.addFuelLog(logData);
+    const saved = await ApiService.addFuelLog(logData);
     await refreshData();
-    showToast('Fuel refill record synchronised with server.');
+    if (saved.queued) {
+      showToast('Server unreachable: fuel refill persisted in local outbox for automatic retry.');
+    } else {
+      showToast('Fuel refill record synchronised with server.');
+    }
   };
 
   // Text-only sidebar navigation (no stickers or icons)
@@ -194,6 +245,7 @@ export default function App() {
     { id: 'logs', label: 'Fuel & Fleet Logs' },
     { id: 'alert', label: 'Alerts' },
     { id: 'integ', label: 'Data Integrity' },
+    { id: 'lab', label: 'Research Lab' },
     { section: 'WORKSPACE' },
     { id: 'veh', label: 'Vehicle Profiles' },
     { id: 'set', label: 'Settings' },
@@ -226,7 +278,7 @@ export default function App() {
           <div
             className="relative p-8 md:p-14 flex flex-col justify-end text-white overflow-hidden bg-cover bg-center"
             style={{
-              backgroundImage: `linear-gradient(180deg, rgba(4,24,18,0.15) 10%, rgba(4,24,18,0.85) 100%), url("public/login-background_a181d644.jpg")`,
+              backgroundImage: `linear-gradient(180deg, rgba(4,24,18,0.15) 10%, rgba(4,24,18,0.85) 100%), url("/assets/aistudio/login-background_a181d644.jpg")`,
             }}
           >
             <div className="relative z-10 max-w-lg space-y-4">
@@ -487,7 +539,39 @@ export default function App() {
             </button>
           </div>
 
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+          <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-4">
+            {(syncState.isUsingCachedData || pendingOutboxCount > 0) && (
+              <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-xl px-4 py-2.5 text-xs text-amber-900 dark:text-amber-200 flex flex-wrap items-center justify-between gap-2">
+                <span>
+                  {syncState.isUsingCachedData
+                    ? `Showing cached snapshot${
+                        syncState.lastSyncedAt
+                          ? ` (last synced ${new Date(syncState.lastSyncedAt).toLocaleTimeString('en-GB')})`
+                          : ''
+                      }. `
+                    : ''}
+                  {pendingOutboxCount > 0
+                    ? `${pendingOutboxCount} record(s) queued in IndexedDB outbox pending server acknowledgment.`
+                    : ''}
+                </span>
+                {pendingOutboxCount > 0 && (
+                  <button
+                    onClick={async () => {
+                      const res = await ApiService.flushOutbox(true);
+                      await refreshData();
+                      showToast(
+                        res.syncedCount > 0
+                          ? `Synchronised ${res.syncedCount} queued record(s).`
+                          : 'Records remain queued until server acknowledges.'
+                      );
+                    }}
+                    className="px-3 py-1 bg-amber-600 text-white rounded-lg font-bold text-[11px]"
+                  >
+                    Retry Sync Now
+                  </button>
+                )}
+              </div>
+            )}
             <ManagerViews
               view={currentView}
               setView={setCurrentView}

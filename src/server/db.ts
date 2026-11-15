@@ -692,6 +692,16 @@ export class EcoRouteDatabase {
     return { backupPath, snapshot };
   }
 
+  public restoreSnapshot(rawSnapshot: any): PersistedDbState {
+    if (!rawSnapshot || typeof rawSnapshot !== 'object' || !Array.isArray(rawSnapshot.trucks)) {
+      throw new Error('Invalid backup snapshot: trucks array is required.');
+    }
+    const migrated = this.migrateState(rawSnapshot);
+    this.applyState(migrated);
+    this.persist();
+    return this.exportSnapshot();
+  }
+
   public resetToDefaults() {
     const defaults = this.buildDefaultState();
     this.applyState(defaults);

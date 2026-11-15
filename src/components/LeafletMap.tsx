@@ -115,10 +115,10 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
 
     trucks.forEach((truck, index) => {
       // Calculate realistic position along corridor if not explicitly specified
-      let lat = truck.lat || 25.0;
-      let lon = truck.lon || 67.5;
+      let lat = truck.lat ?? 25.0;
+      let lon = truck.lon ?? 67.5;
 
-      if (!truck.lat) {
+      if (truck.lat === undefined || truck.lon === undefined) {
         const factor = (index * 0.13 + 0.05) % 1;
         const segmentIdx = Math.min(Math.floor(factor * (CORRIDOR_POINTS.length - 1)), CORRIDOR_POINTS.length - 2);
         const u = factor * (CORRIDOR_POINTS.length - 1) - segmentIdx;

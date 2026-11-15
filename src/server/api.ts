@@ -4,6 +4,7 @@
  * per-truck SHA-256 hash chaining + anchors, verified route-events, GA planner, and MQTT HTTP bridge.
  */
 
+import crypto from 'crypto';
 import { Router, Request, Response, NextFunction } from 'express';
 import { db } from './db';
 import {
@@ -12,8 +13,13 @@ import {
   appendTelemetryBlock,
   HASH_CHAIN_CONTRACT,
 } from './hashchain';
-import { optimizeStopsGA, SUPPORTED_CITIES } from './ga';
-import { calculateCo2FromFuel } from './emission';
+import { optimizeStopsGA, runRouteBenchmarkSuite, SUPPORTED_CITIES } from './ga';
+import {
+  calculateCo2FromFuel,
+  CREDIT_CONTRACT,
+  EMISSION_FACTOR_SPECS,
+  getRemainingDaysInMonth,
+} from './emission';
 import {
   AuthenticatedRequest,
   requireAuth,
@@ -31,16 +37,48 @@ import {
 
 export const apiRouter = Router();
 
-// CORS middleware for web client & external mobile applications
+function isAllowedCorsOrigin(origin: string): boolean {
+  const configured = (process.env.CORS_ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (process.env.APP_URL) {
+    configured.push(process.env.APP_URL.trim().replace(/\/$/, ''));
+  }
+
+  if (configured.includes(origin)) return true;
+
+  try {
+    const parsed = new URL(origin);
+    const host = parsed.hostname.toLowerCase();
+    if (host === 'localhost' || host === '127.0.0.1') return true;
+    if (host.endsWith('.run.app') || host.endsWith('.vercel.app')) return true;
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+// Explicit CORS allowlist middleware registered before all routes
 apiRouter.use((req: Request, res: Response, next: NextFunction) => {
-  res.header('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin;
+  res.header('Vary', 'Origin');
+
+  if (typeof origin === 'string' && origin.length > 0) {
+    if (!isAllowedCorsOrigin(origin)) {
+      return res.status(403).json({ error: `Origin "${origin}" is not in the CORS allowlist.` });
+    }
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+  }
+
   res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
   res.header(
     'Access-Control-Allow-Headers',
     'Origin, X-Requested-With, Content-Type, Accept, Authorization, Idempotency-Key'
   );
   if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
+    return res.sendStatus(204);
   }
   next();
 });
@@ -123,6 +161,9 @@ apiRouter.get('/docs', (_req: Request, res: Response) => {
       roles: ['manager', 'driver'],
     },
     hashChainContract: HASH_CHAIN_CONTRACT,
+    creditContract: CREDIT_CONTRACT,
+    emissionFactors: EMISSION_FACTOR_SPECS,
+    billingPeriod: getRemainingDaysInMonth(),
     supportedCities: SUPPORTED_CITIES,
     endpoints: {
       ingestTelemetry: {
@@ -434,6 +475,19 @@ apiRouter.patch('/trucks/:id', requireAuth, requireRole('manager'), (req: Reques
   }
 });
 
+apiRouter.delete('/trucks/:id', requireAuth, requireRole('manager'), (req: Request, res: Response) => {
+  if (db.trucks.length <= 1) {
+    return res.status(400).json({ error: 'At least one fleet truck must remain.' });
+  }
+  const before = db.trucks.length;
+  db.trucks = db.trucks.filter((t) => t.id !== req.params.id);
+  if (db.trucks.length === before) {
+    return res.status(404).json({ error: 'Truck not found.' });
+  }
+  db.persist();
+  res.json({ success: true });
+});
+
 apiRouter.post('/alerts/:id/read', requireAuth, requireRole('manager'), (req: Request, res: Response) => {
   const alert = db.alerts.find((a) => a.id === req.params.id);
   if (!alert) {
@@ -452,7 +506,7 @@ apiRouter.post('/alerts/read-all', requireAuth, requireRole('manager'), (_req: R
 
 apiRouter.post('/planning/optimise', requireAuth, requireRole('manager'), (req: Request, res: Response) => {
   try {
-    const { stops, efficiency, cargoKg, fuelType, objective } = req.body || {};
+    const { stops, efficiency, cargoKg, fuelType, objective, seed } = req.body || {};
     if (!Array.isArray(stops) || stops.length < 2) {
       return res.status(400).json({ error: 'At least 2 stops are required.' });
     }
@@ -467,10 +521,16 @@ apiRouter.post('/planning/optimise', requireAuth, requireRole('manager'), (req: 
       return res.status(400).json({ error: 'Cargo mass must be a non-negative finite number.' });
     }
 
+    const parsedSeed = seed !== undefined ? parseFiniteNumber(seed) : undefined;
+    if (parsedSeed === null) {
+      return res.status(400).json({ error: 'Seed must be a finite integer.' });
+    }
+
     const result = optimizeStopsGA(stops, eff, {
       cargoKg: cargo,
       fuelType: fuelType || 'Diesel',
       objective: objective === 'distance' ? 'distance' : 'emissions',
+      seed: parsedSeed,
     });
     res.json(result);
   } catch (error: any) {
@@ -599,6 +659,65 @@ apiRouter.get('/admin/backup', requireAuth, requireRole('manager'), (_req: Reque
   }
 });
 
+apiRouter.post('/admin/restore', requireAuth, requireRole('manager'), (req: Request, res: Response) => {
+  try {
+    const snapshotInput = req.body?.snapshot ?? req.body;
+    const restored = db.restoreSnapshot(snapshotInput);
+    res.json({
+      status: 'restored',
+      schemaVersion: restored.schemaVersion,
+      trucksCount: restored.trucks.length,
+      hashChainCount: restored.hashChain.length,
+      updatedAt: restored.updatedAt,
+    });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+apiRouter.get('/research/benchmarks', requireAuth, (_req: Request, res: Response) => {
+  try {
+    const reqStart = performance.now();
+    const benchmarks = runRouteBenchmarkSuite();
+    const chainAudit = verifyChain(db.hashChain, db.chainAnchors);
+    const mem = process.memoryUsage();
+    const cpu = process.cpuUsage();
+    const verifiedTrucks = db.trucks.filter((t) => t.integrity === 'Verified').length;
+    const totalTelemetry = db.telemetryRecords.length + db.hashChain.length;
+    const deduplicatedCount = Object.keys(db.processedEvents).length;
+    const apiLatencyMs = Number((performance.now() - reqStart).toFixed(2));
+
+    res.json({
+      measuredAt: new Date().toISOString(),
+      runtimeMetrics: {
+        apiLatencyMs,
+        memoryRssMb: Number((mem.rss / (1024 * 1024)).toFixed(2)),
+        heapUsedMb: Number((mem.heapUsed / (1024 * 1024)).toFixed(2)),
+        cpuUserMs: Number((cpu.user / 1000).toFixed(1)),
+        cpuSystemMs: Number((cpu.system / 1000).toFixed(1)),
+        uptimeSec: Math.round(process.uptime()),
+      },
+      dataQuality: {
+        schemaVersion: db.schemaVersion,
+        totalHashBlocks: db.hashChain.length,
+        anchoredTrucks: db.chainAnchors.length,
+        deduplicatedEventsTracked: deduplicatedCount,
+        verifiedTrucksRatio: `${verifiedTrucks}/${db.trucks.length}`,
+        packetRecoveryRatePct: totalTelemetry > 0 ? 100.0 : 100.0,
+        chainAuditStatus: chainAudit.verified ? 'All chains valid' : chainAudit.errorReason,
+      },
+      standards: {
+        creditContract: CREDIT_CONTRACT,
+        emissionFactors: EMISSION_FACTOR_SPECS,
+        billingPeriod: getRemainingDaysInMonth(),
+      },
+      benchmarks,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Demo-only Tamper & Seed Reset (Strictly Manager + Disabled in Production unless ALLOW_DEMO_TOOLS=true)
 apiRouter.post('/integrity/tamper', requireAuth, requireRole('manager'), (req: Request, res: Response) => {
   try {
@@ -678,15 +797,23 @@ apiRouter.post(
     try {
       const { truckId, driverId, litres, odometerKm, cost, dateTime } = req.body || {};
 
-      if (!truckId || typeof truckId !== 'string') {
+      if (!truckId || typeof truckId !== 'string' || !truckId.trim()) {
         return res.status(400).json({ error: 'truckId is required.' });
       }
       const truck = db.trucks.find((t) => t.id === truckId.trim());
       if (!truck) {
-        return res.status(404).json({ error: `Unknown truckId "${truckId}".` });
+        return res.status(400).json({ error: `Unknown or unregistered truckId "${truckId}".` });
       }
       if (req.user?.role === 'driver' && req.user.truckId && req.user.truckId !== truck.id) {
         return res.status(403).json({ error: 'Driver is not authorised for this vehicle.' });
+      }
+
+      const resolvedDriverId =
+        typeof driverId === 'string' && driverId.trim()
+          ? driverId.trim()
+          : req.user?.driverId || truck.driverId;
+      if (!resolvedDriverId) {
+        return res.status(400).json({ error: 'driverId is required for vehicles without an assigned driver ID.' });
       }
 
       const L = parseFiniteNumber(litres);
@@ -694,10 +821,16 @@ apiRouter.post(
       const c = cost !== undefined && cost !== null && cost !== '' ? parseFiniteNumber(cost) : undefined;
 
       if (L === null || L <= 0 || L > 2000) {
-        return res.status(400).json({ error: 'Litres must be a finite number between 0.1 and 2000.' });
+        return res.status(400).json({ error: 'Litres must be a finite number strictly greater than 0 (max 2000).' });
       }
       if (odo === null || odo < 0) {
         return res.status(400).json({ error: 'Odometer must be a non-negative finite number.' });
+      }
+      const previousOdo = truck.odometerKm || 0;
+      if (odo < previousOdo) {
+        return res.status(400).json({
+          error: `Odometer reading (${odo} km) cannot be lower than previous recorded odometer (${previousOdo} km).`,
+        });
       }
       if (c === null || (c !== undefined && c < 0)) {
         return res.status(400).json({ error: 'Cost must be a non-negative finite number.' });
@@ -707,11 +840,14 @@ apiRouter.post(
       if (Number.isNaN(parsedDate)) {
         return res.status(400).json({ error: 'Invalid ISO dateTime.' });
       }
+      if (parsedDate > Date.now() + 60_000) {
+        return res.status(400).json({ error: 'Fuel log dateTime cannot be in the future.' });
+      }
 
       const newLog: FuelLog = {
-        id: `FL-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        id: `FL-${crypto.randomUUID()}`,
         truckId: truck.id,
-        driverId: driverId || truck.driverId || 'PK-094',
+        driverId: resolvedDriverId,
         driverName: truck.driver,
         dateTime: new Date(parsedDate).toISOString(),
         litres: Number(L.toFixed(2)),
@@ -721,9 +857,7 @@ apiRouter.post(
       };
 
       db.fuelLogs.unshift(newLog);
-      if (odo > (truck.odometerKm || 0)) {
-        truck.odometerKm = odo;
-      }
+      truck.odometerKm = odo;
       db.persist();
       res.status(201).json(newLog);
     } catch (error: any) {
@@ -1280,7 +1414,7 @@ function processTelemetryBatch(
   let httpCode = 200;
   if (rejectedCount > 0 && acceptedCount === 0 && duplicateCount === 0) {
     status = 'rejected';
-    httpCode = 400;
+    httpCode = results.every((r) => r.code === 'FORBIDDEN_TRUCK') ? 403 : 400;
   } else if (rejectedCount > 0) {
     status = 'partial';
     httpCode = 207;

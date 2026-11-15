@@ -1,0 +1,75 @@
+{
+  "name": "EcoRoute Fleet Web & Mobile API Contract",
+  "version": "1.2.0",
+  "language": "en-GB",
+  "defaultManager": {
+    "name": "Laiba Asghar",
+    "email": "laiba.asghar@ecoroute.com",
+    "role": "manager"
+  },
+  "authentication": {
+    "scheme": "Bearer JWT (HMAC-SHA256)",
+    "loginEndpoint": "POST /api/auth/login",
+    "profileEndpoint": "GET /api/auth/me",
+    "roles": {
+      "manager": "Full fleet read/write, truck management, GA route planning, integrity verification, backup/restore, settings",
+      "driver": "Scoped to submitting telemetry, fuel logs, and route events for assigned truckId only"
+    }
+  },
+  "telemetryIngestContract": {
+    "endpoints": ["POST /api/telemetry/ingest", "POST /api/v1/ingest/batch", "POST /api/telemetry/mqtt-bridge"],
+    "deduplication": {
+      "requiredField": "eventId",
+      "headerFallbackSingleItem": "Idempotency-Key",
+      "maxLength": 128,
+      "behavior": "Duplicate eventId returns status='duplicate' without double-counting CO2 or distance"
+    },
+    "distanceRules": {
+      "incrementalField": "distanceDeltaKm",
+      "cumulativeField": "odometerKm",
+      "rejectedField": "distanceKm (explicitly rejected as AMBIGUOUS_DISTANCE_FIELD)"
+    },
+    "validationBounds": {
+      "lat": "[-90, 90] finite number (0 is valid; lat and lon must be supplied together)",
+      "lon": "[-180, 180] finite number",
+      "speedKmh": "[0, 220] finite number",
+      "distanceDeltaKm": "[0, 2000] finite number",
+      "odometerKm": ">= 0 finite number",
+      "co2Kg": ">= 0 finite number",
+      "fuelMl": ">= 0 finite number",
+      "engineLoadPct": "[0, 100] finite number",
+      "coolantC": "[-40, 200] finite number",
+      "ts": "Valid ISO-8601 timestamp string"
+    }
+  },
+  "fuelLogContract": {
+    "endpoint": "POST /api/fuel-logs",
+    "rules": [
+      "Unknown truckId rejected with HTTP 400",
+      "litres must be > 0 and <= 2000",
+      "odometerKm must be >= truck's previous recorded odometerKm",
+      "dateTime must be valid ISO-8601 and not in the future",
+      "Generated ID uses crypto.randomUUID()"
+    ]
+  },
+  "routeEventContract": {
+    "endpoint": "POST /api/route-events",
+    "requiredFields": ["truckId", "trigger", "location", "originalKm", "originalMin", "originalL", "ecoKm", "ecoMin", "ecoL", "accepted"],
+    "rules": "Zero (0) is preserved as a valid metric; savings and CO2 values are computed server-side from verified fuel inputs and server UTC date."
+  },
+  "hashChainContract": {
+    "algorithm": "SHA-256",
+    "genesisPrevHash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "canonicalFormat": "prevHash + \"\\n\" + JSON.stringify([truckId, tripId, seq, ts, speedKmh, rpm, fuelRateLph, engineLoadPct, coolantC, cargoKg, idle, fuelMl, co2G])",
+    "anchorSigning": "HMAC-SHA256(truckId + ':' + headSeq + ':' + headHash + ':' + blockCount + ':' + anchoredAt)"
+  },
+  "carbonCreditsAndEmissions": {
+    "creditDefinition": "1 Carbon Credit = 1,000 kg (1 metric tonne) CO2e",
+    "factors": {
+      "Diesel": { "value": 2.68, "unit": "kg CO2e/L", "source": "UK DEFRA / DESNZ Greenhouse Gas Conversion Factors" },
+      "CNG": { "value": 2.75, "unit": "kg CO2e/kg", "source": "UK DEFRA / DESNZ Conversion Factors (measured by mass in kg)" },
+      "Hybrid": { "value": 2.68, "unit": "kg CO2e/L", "source": "UK DEFRA / DESNZ Conversion Factors" },
+      "EV": { "value": 0.0, "unit": "kg CO2e/kWh", "source": "Tank-to-Wheel zero tailpipe emissions" }
+    }
+  }
+}
